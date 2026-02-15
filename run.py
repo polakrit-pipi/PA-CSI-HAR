@@ -57,10 +57,10 @@ model.summary()
 
 #read data 
 def read_data(root_data):
-    x_train_amp = np.load(root_data+'our_data_amp_1000_270_200.npy',allow_pickle=True)
-    x_train_phase = np.load(root_data+'our_data_phase_1000_270_200.npy',allow_pickle=True) #data_1
+    x_train_amp = np.load(root_data+'our_data_amp_1000_270_150.npy',allow_pickle=True)
+    x_train_phase = np.load(root_data+'our_data_phase_1000_270_150.npy',allow_pickle=True) #data_1
     x_train_phase = unwrap_phase(x_train_phase)
-    label = np.load(root_data+'our_data_label_1000_270_200.npy',allow_pickle=True)
+    label = np.load(root_data+'our_data_label_1000_270_150.npy',allow_pickle=True)
 
     print(x_train_amp.shape)
     print(x_train_phase.shape)
