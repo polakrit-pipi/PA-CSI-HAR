@@ -1,6 +1,6 @@
 import tensorflow as tf
-from tensorflow.keras import layers
-from tensorflow.keras.layers import add, concatenate, TimeDistributed, Concatenate
+from keras import layers
+from keras.layers import add, concatenate, TimeDistributed, Concatenate
 
 import numpy as np
 import math 
@@ -27,12 +27,12 @@ class Two_Stream_Model(layers.Layer):
 
         if vlayers == 0:
             self.v_transformer = None
-            self.dense =  layers.Dense(num_class, input_dim=270)
+            self.dense =  layers.Dense(num_class)
         else: 
             self.v_transformer = Transfomer(2000,vlayers,vheads)
-            self.dense =  layers.Dense(num_class, input_dim=self.kernel_num * len(self.filter_sizes) + self.kernel_num_v * len(self.filter_sizes_v))
+            self.dense =  layers.Dense(num_class)
         
-        self.dense2 = layers.Dense(num_class,input_dim = self.kernel_num * len(self.filter_sizes))
+        self.dense2 = layers.Dense(num_class)
         self.dropout_rate = 0.5
         self.dropout = layers.Dropout(self.dropout_rate)
         self.encoders = []
@@ -57,9 +57,7 @@ class Two_Stream_Model(layers.Layer):
         for encoder in self.encoders:
             f_map = encoder(tf.transpose(o, perm=[0, 2, 1]))
             enc_ = self.relu(f_map)
-            k_h = enc_.shape[2]
-            enc_ = layers.MaxPooling1D(data_format='channels_first',pool_size=k_h)(enc_)
-            enc_ = tf.squeeze(enc_, axis=-1)
+            enc_ = tf.reduce_max(enc_, axis=2)
             enc_outs.append(enc_)
         encoding = self.dropout(tf.concat(enc_outs, axis=1))
         q_re = self.relu(encoding)
@@ -67,9 +65,7 @@ class Two_Stream_Model(layers.Layer):
             for encoder in self.encoders_v:
                 f_map = encoder(tf.transpose(v, perm=[0, 2, 1]))
                 enc_ = self.relu(f_map)
-                k_h = enc_.shape[2]
-                enc_ = layers.MaxPooling1D(data_format='channels_first',pool_size=k_h)(enc_)
-                enc_ = tf.squeeze(enc_, axis=-1)
+                enc_ = tf.reduce_max(enc_, axis=2)
                 enc_outs_v.append(enc_)
             encoding_v = self.dropout(tf.concat(enc_outs_v, axis=1))
             v_re = self.relu(encoding_v)

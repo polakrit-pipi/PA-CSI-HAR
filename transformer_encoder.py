@@ -1,5 +1,6 @@
-from tensorflow.keras import layers
-from tensorflow.keras.initializers import GlorotUniform
+import tensorflow as tf
+from keras import layers
+from keras.initializers import GlorotUniform
 import numpy as np
 
 class LayerNorm(layers.Layer):
@@ -27,28 +28,25 @@ class Encoder(layers.Layer):
             x = layer(x,mask)
         return self.norm(x)
 
-class SublayerConnection(layers.Layer):
-    def __init__(self, size, dropout):
-        super().__init__()
-        self.norm = LayerNorm(size)
-        self.dropout = layers.Dropout(dropout)
-
-    def forward(self, x, sublayer):
-        return x + self.dropout(sublayer(self.norm(x)))
-
 class EncoderLayer(layers.Layer):
     def __init__(self, size, self_attn, feed_forward, dropout):
         super().__init__()
         self.self_attn = self_attn
         self.feed_forward = feed_forward
-        self.sublayer1 = SublayerConnection(size, dropout)
-        self.sublayer2 = SublayerConnection(size, dropout)
+        self.norm1 = LayerNorm(size)
+        self.norm2 = LayerNorm(size)
+        self.dropout = layers.Dropout(dropout)
         self.size = size
 
-    def forward(self, x, mask=None):
+    def call(self, x, mask=None):
         "Follow Figure 1 (left) for connections."
-        x = self.sublayer[0](x, lambda x: self.self_attn(x, x, x, mask))
-        return self.sublayer[1](x, self.feed_forward)
+        # Sublayer 1: self-attention with pre-norm + residual
+        normed = self.norm1(x)
+        x = x + self.dropout(self.self_attn(normed, normed, normed, mask=mask))
+        # Sublayer 2: feed-forward with pre-norm + residual
+        normed = self.norm2(x)
+        x = x + self.dropout(self.feed_forward(normed))
+        return x
 
 def attention(query, key, value, mask=None, dropout=None):
     d_k = tf.shape(query)[-1]
@@ -57,7 +55,7 @@ def attention(query, key, value, mask=None, dropout=None):
         scores = tf.where(tf.equal(mask, 0), tf.fill(tf.shape(scores), -1e9), scores)
     p_attn = tf.nn.softmax(scores, axis=-1)
     if dropout is not None:
-        p_attn = Dropout(dropout)(p_attn, training=True)
+        p_attn = dropout(p_attn)
     return tf.matmul(p_attn, value), p_attn
 
 class PositionwiseFeedForward(layers.Layer):
@@ -87,7 +85,7 @@ class MultiHeadedAttention(layers.Layer):
         self.attn = None
         self.dropout = layers.Dropout(dropout)
 
-    def forward(self, query, key, value, mask=None):
+    def call(self, query, key, value, mask=None):
         "Implements Figure 2"
         if mask is not None:
             # Same mask applied to all h heads.
@@ -101,13 +99,13 @@ class MultiHeadedAttention(layers.Layer):
         ]
 
         # 2) Apply attention on all the projected vectors in batch.
-        x, self.attn = self.attention(query, key, value, mask=mask,
-                                      dropout=self.dropout)
+        x, self.attn = attention(query, key, value, mask=mask,
+                                 dropout=self.dropout)
 
         # 3) "Concat" using a view and apply a final linear.
         x = tf.reshape(tf.transpose(x, perm=[0, 2, 1, 3]), (nbatches, -1, self.h * self.d_k))
 
-        return self.linears[-1](x)    
+        return self.linears[-1](x)
 
 class Transfomer(layers.Layer):
     def __init__(self,hidden_dim,N,H):
@@ -119,5 +117,5 @@ class Transfomer(layers.Layer):
             ),
             N
         )
-    def forward(self,x,mask=None):
-        self.model(x,mask)
+    def call(self,x,mask=None):
+        return self.model(x,mask)

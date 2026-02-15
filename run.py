@@ -2,7 +2,7 @@ import keras
 import tensorflow as tf
 import numpy as np 
 from tqdm import tqdm
-from tensorflow.keras import layers,optimizers
+from keras import layers, optimizers
 from sklearn.model_selection import train_test_split
 from models import Two_Stream_Model
 from visualization_data import draw_acc, draw_loss,draw_confusion_matrix_2
@@ -50,7 +50,7 @@ lr_schedule = optimizers.schedules.ExponentialDecay(
 )
 
 model = build_model(input_shape, hlayers,vlayers,hheads,vheads,K,sample,num_class)
-model.compile(optimizer= tf.keras.optimizers.Adam(learning_rate=lr_schedule), 
+model.compile(optimizer= keras.optimizers.Adam(learning_rate=lr_schedule), 
                 loss="sparse_categorical_crossentropy", 
                 metrics=["accuracy"])
 model.summary()

@@ -1,6 +1,7 @@
+import keras
 import tensorflow as tf
-from tensorflow.keras import layers
-from tensorflow.keras.layers import add, concatenate, TimeDistributed, Concatenate
+from keras import layers
+from keras.layers import add, concatenate, TimeDistributed, Concatenate
 import numpy as np
 
 import math, copy, time
@@ -32,29 +33,23 @@ class LayerNorm(layers.Layer):
         out = self.a_2 * (x-mean)/(std + self.eps) + self.b_2
         return out
 
-class SublayerConnection(layers.Layer):
-    def __init__(self,size, dropout):
-        super(SublayerConnection, self).__init__()
-        #self.norm =layers.LayerNormalization() # LayerNorm(size)
-        self.norm =LayerNorm(size)
-        self.dropout = layers.Dropout(dropout)
-
-    def call(self,x,sublayer):
-        sub = sublayer(self.norm(x))
-        return x + self.dropout(sub) 
-
 class EncoderLayer(layers.Layer):
     def __init__(self,size,self_attt,feed_forward,dropout):
         super(EncoderLayer,self).__init__()
         self.self_attt = self_attt
         self.feed_forward = feed_forward
-        self.sublayer_0 = SublayerConnection(size,dropout)
-        self.sublayer_1 = SublayerConnection(size,dropout)
+        self.norm1 = LayerNorm(size)
+        self.norm2 = LayerNorm(size)
+        self.dropout = layers.Dropout(dropout)
         self.size = size
     def call(self,x):
-        lamb = lambda x: self.self_attt(x,x,x)
-        x = self.sublayer_0(x,lamb)
-        return self.sublayer_1(x,self.feed_forward)
+        # Sublayer 1: self-attention with pre-norm + residual
+        normed = self.norm1(x)
+        x = x + self.dropout(self.self_attt(normed, normed, normed))
+        # Sublayer 2: feed-forward with pre-norm + residual
+        normed = self.norm2(x)
+        x = x + self.dropout(self.feed_forward(normed))
+        return x
 
 def attention_with_pos(query, key, value, pos_k, pos_v, mask=None, dropout=None):
     "Compute 'Scaled Dot Product Attention'"
@@ -107,7 +102,7 @@ def attention(query, key, value, mask=None, dropout=None):
     if mask is not None:
         scores += (mask * -1e9)
 
-    p_attn = tf.keras.activations.softmax(scores, axis=-1)
+    p_attn = keras.activations.softmax(scores, axis=-1)
 
     if dropout is not None:
         p_attn = dropout(p_attn)

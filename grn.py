@@ -2,7 +2,7 @@ import keras
 import tensorflow as tf
 import numpy as np 
 from tqdm import tqdm
-from tensorflow.keras import layers,optimizers
+from keras import layers
 from sklearn.model_selection import train_test_split
 
 class GatesResidualNetwork(layers.Layer):

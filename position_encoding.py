@@ -2,8 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
+import numpy as np
 
-from tensorflow.keras import layers
+from keras import layers
 
 class PE(layers.Layer):
     def __init__(self, d_model, max_seq_length=500, dropout=0.1):
@@ -44,12 +45,12 @@ class GRE(nn.Module):
         self.positions = torch.tensor([i for i in range(total_size)], requires_grad=False).unsqueeze(1).repeat(1, K)
         s = 0.0
         interval = total_size / K
-        mu = []
+        mu_values = []
         for _ in range(K):
-            mu.append(nn.Parameter(torch.tensor(s, dtype=torch.float), requires_grad=True))
+            mu_values.append(s)
             s = s + interval
-        self.mu = nn.Parameter(torch.tensor(mu, dtype=torch.float).unsqueeze(0), requires_grad=True)
-        self.sigma = nn.Parameter(torch.tensor([torch.tensor([50.0], dtype=torch.float, requires_grad=True) for _ in range(K)]).unsqueeze(0))
+        self.mu = nn.Parameter(torch.tensor(mu_values, dtype=torch.float).unsqueeze(0), requires_grad=True)
+        self.sigma = nn.Parameter(torch.tensor([[50.0] for _ in range(K)], dtype=torch.float).unsqueeze(0))
 
     def forward(self, x):
         M = normal_pdf(self.positions, self.mu, self.sigma)
